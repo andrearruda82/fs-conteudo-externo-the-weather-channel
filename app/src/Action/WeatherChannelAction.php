@@ -25,7 +25,7 @@ final class WeatherChannelAction
     {
         $this->setCityId($args['city-id']);
 
-        if($args['city-name'])
+        if(isset($args['city-name']))
         {
             $this->setCityName($args['city-name']);
         }
@@ -72,10 +72,13 @@ final class WeatherChannelAction
                 'forecasts' => ''
             );
 
-            $period_type = date('H') >= 16 ? 'night' : 'day';
-
             foreach ($forecasts as $i => $item)
             {
+                if(isset($item->day))
+                    $period_type = 'day';
+                else
+                    $period_type = 'night';
+
                 $forecast = $item->$period_type;
 
                 $data['forecasts'][$i] = array(

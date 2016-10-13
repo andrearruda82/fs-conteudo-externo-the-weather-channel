@@ -92,7 +92,7 @@ final class WeatherChannelAction
                         'temp' => $forecast->metric->temp_phrase,
                         'lunar' => $item->lunar_phase,
                         'pop' => $forecast->pop_phrase,
-                        'narrative' => $forecast->metric->narrative
+                        'narrative' => $item->metric->narrative
                     ),
                     'prospect' => array(
                         'temp' => array(

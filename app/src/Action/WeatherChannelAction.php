@@ -84,13 +84,15 @@ final class WeatherChannelAction
                 $data['forecasts'][$i] = array(
                     'date' => array(
                         'day' =>  date('Y-m-d', strtotime($forecast->fcst_valid_local)),
-                        'weekday' => $forecast->daypart_name
+                        'weekday' => str_replace('-feira', '', $forecast->daypart_name)
                     ),
                     'phrases' => array(
                         'weather' => $forecast->shortcast,
                         'wind' => $forecast->metric->wind_phrase,
                         'temp' => $forecast->metric->temp_phrase,
-                        'lunar' => $item->lunar_phase
+                        'lunar' => $item->lunar_phase,
+                        'pop' => $forecast->pop_phrase,
+                        'narrative' => $forecast->metric->narrative
                     ),
                     'prospect' => array(
                         'temp' => array(

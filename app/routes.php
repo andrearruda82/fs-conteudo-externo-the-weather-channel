@@ -1,4 +1,4 @@
 <?php
 // Routes
 
-$app->get('/{city-id}[/{city-name}/]', App\Action\WeatherChannelAction::class);
+$app->get('/{city-id}[/{city-name}[/]]', App\Action\WeatherChannelAction::class);

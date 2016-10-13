@@ -51,18 +51,18 @@ final class WeatherChannelAction
                     'location' => $this->Info()
                 ),
                 'now' => array(
-                    'phrase' => $now->wx,
+//                    'phrase' => $now->wx,
                     'temp' => $now->tmpC,
-                    'feels' => $now->flsLkIdxC,
+//                    'feels' => $now->flsLkIdxC,
                     'prospect' => array(
                         'temp' => array(
                             'max' => $now->tmpMx24C,
                             'min' => $now->tmpMn24C
                         ),
-                        'sun' => array(
-                            'sunrise' => $now->sunrise,
-                            'sunset' => $now->sunset
-                        )
+//                        'sun' => array(
+//                            'sunrise' => $now->sunrise,
+//                            'sunset' => $now->sunset
+//                        )
                     ),
                     'midia' => array(
                         'icon' => $this->getPath() . $now->sky . '_icon.png',
@@ -87,10 +87,10 @@ final class WeatherChannelAction
                         'weekday' => str_replace('-feira', '', $forecast->daypart_name)
                     ),
                     'phrases' => array(
-                        'weather' => $forecast->shortcast,
-                        'wind' => $forecast->metric->wind_phrase,
-                        'temp' => $forecast->metric->temp_phrase,
-                        'lunar' => $item->lunar_phase,
+//                        'weather' => $forecast->shortcast,
+//                        'wind' => $forecast->metric->wind_phrase,
+//                        'temp' => $forecast->metric->temp_phrase,
+//                        'lunar' => $item->lunar_phase,
                         'pop' => $forecast->pop_phrase,
                         'narrative' => $item->metric->narrative
                     ),
@@ -99,14 +99,14 @@ final class WeatherChannelAction
                             'max' => !empty($item->metric->max_temp) ? $item->metric->max_temp : $item->metric->min_temp,
                             'min' => $item->metric->min_temp
                         ),
-                        'sun' => array(
-                            'rise' => (string) S::create(date('h:i A' , strtotime($item->sunrise)))->toLowerCase(),
-                            'set' => (string) S::create(date('h:i A' , strtotime($item->sunset)))->toLowerCase()
-                        ),
-                        'moon' => array(
-                            'rise' => (string) S::create(date('h:i A' , strtotime($item->moonrise)))->toLowerCase(),
-                            'set' => (string) S::create(date('h:i A' , strtotime($item->moonset)))->toLowerCase()
-                        ),
+//                        'sun' => array(
+//                            'rise' => (string) S::create(date('h:i A' , strtotime($item->sunrise)))->toLowerCase(),
+//                            'set' => (string) S::create(date('h:i A' , strtotime($item->sunset)))->toLowerCase()
+//                        ),
+//                        'moon' => array(
+//                            'rise' => (string) S::create(date('h:i A' , strtotime($item->moonrise)))->toLowerCase(),
+//                            'set' => (string) S::create(date('h:i A' , strtotime($item->moonset)))->toLowerCase()
+//                        ),
                         'midia' => array(
                             'icon' => $this->getPath() . $item->$period_type->icon_code . '_icon.png'
                         )
@@ -119,7 +119,7 @@ final class WeatherChannelAction
                 }
             }
 
-            FileSystemCache::store($key, $data, 7200);
+            FileSystemCache::store($key, $data, 1800);
 
         }
 
@@ -178,27 +178,27 @@ final class WeatherChannelAction
         $city_name = !empty($this->getCityName()) ? $this->getCityName() : $location->cityNm;
 
         $data = array(
-            'id' => $location->locId,
+//            'id' => $location->locId,
             'city' => (string) S::create($city_name)->toLowerCase()->titleize(['da', 'de', 'do']),
-            'state' => $location->stNm,
-            'country' => $location->_country,
-            'position' => array(
-                'lat' => $location->lat,
-                'long' => $location->long
-            ),
-            'airports' => ''
+//            'state' => $location->stNm,
+//            'country' => $location->_country,
+//            'position' => array(
+//                'lat' => $location->lat,
+//                'long' => $location->long
+//            ),
+//            'airports' => ''
         );
 
-        if(isset($location->_arptNear))
-        {
-            foreach ($location->_arptNear as $key => $item)
-            {
-                $data['airports'][$key] = array(
-                    'name' => $item,
-                    'dist' => $location->_arptNearDist[$key]->dist
-                );
-            }
-        }
+//        if(isset($location->_arptNear))
+//        {
+//            foreach ($location->_arptNear as $key => $item)
+//            {
+//                $data['airports'][$key] = array(
+//                    'name' => $item,
+//                    'dist' => $location->_arptNearDist[$key]->dist
+//                );
+//            }
+//        }
 
         return $data;
     }

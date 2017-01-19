@@ -13,7 +13,7 @@ use Stringy\Stringy as S;
 
 final class WeatherChannelAction
 {
-    private $city_id, $city_name, $city_country;
+    private $city_id, $city_name;
     private $locale = 'pt_BR';
     private $path = 'http://conteudo.farolsign.com.br/weather_channel/v1/data/uploads/images/';
 
@@ -38,9 +38,10 @@ final class WeatherChannelAction
 
         if($data === false || $forceFileCached == true)
         {
-            $published = strtotime(json_decode(file_get_contents('http://dsx.weather.com/cs/v2/datetime/' . $this->getLocale() . '/' . $this->getCityId() . ':1:' . $this->getCityCountry()), true)['datetime']);
-            $now = json_decode(file_get_contents('http://dsx.weather.com/wxd/v2/MORecord/' . $this->getLocale() . '/' . $this->getCityId() . ':1:' . $this->getCityCountry()))->MOData;
-            $forecasts = json_decode(file_get_contents('http://dsx.weather.com/wxd/v2/15DayForecast/' . $this->getLocale() . '/' . $this->getCityId() . ':1:' . $this->getCityCountry()))->fcstdaily15alluoms->forecasts;
+            $published = strtotime(json_decode(file_get_contents('http://dsx.weather.com/cs/v2/datetime/' . $this->getLocale() . '/' . $this->getCityId() . ':1:BR'), true)['datetime']);
+            $now = json_decode(file_get_contents('http://dsx.weather.com/wxd/v2/MORecord/' . $this->getLocale() . '/' . $this->getCityId() . ':1:BR'))->MOData;
+            $forecasts = json_decode(file_get_contents('http://dsx.weather.com/wxd/v2/15DayForecast/' . $this->getLocale() . '/' . $this->getCityId() . ':1:BR'))->fcstdaily15alluoms->forecasts;
+
 
             $data = array(
                 'info' => array(
@@ -51,17 +52,15 @@ final class WeatherChannelAction
                     'location' => $this->getLocation(),
                 ),
                 'now' => array(
-                    'temp' => (string) $now->tmpC,
+                    'temp' => $now->tmpC,
                     'prospect' => array(
                         'temp' => array(
-                            'max' => (string) $now->tmpMx24C,
-                            'min' => (string) $now->tmpMn24C
+                            'max' => $now->tmpMx24C,
+                            'min' => $now->tmpMn24C
                         ),
                     ),
-                    'midia' => array(
-                        'icon' => $this->getPath() . $now->sky . '_icon.png',
-                        'background' => $this->getPath() . $now->sky . '_bg.jpg'
-                    )
+                    'icon' => $this->getPath() . $now->sky . '_icon.png',
+                    'background' => $this->getPath() . $now->sky . '_bg.jpg',
                 ),
                 'forecasts' => array()
             );
@@ -76,18 +75,19 @@ final class WeatherChannelAction
                 $forecast = $item->$period_type;
 
                 $data['forecasts'][$i] = array(
-                    'weekday' => str_replace('-feira', '', $forecast->daypart_name),
+                    'date' => array(
+                        'day' =>  date('Y-m-d', strtotime($forecast->fcst_valid_local)),
+                        'weekday' => str_replace('-feira', '', $forecast->daypart_name)
+                    ),
+                    'image' => $this->getPath() . $item->$period_type->icon_code . '_icon.png',
                     'phrases' => array(
                         'pop' => $forecast->pop_phrase,
                         'narrative' => $item->metric->narrative
                     ),
                     'temp' => array(
-                        'max' => (string) (!empty($item->metric->max_temp) ? $item->metric->max_temp : $item->metric->min_temp),
-                        'min' => (string) $item->metric->min_temp
+                        'max' => !empty($item->metric->max_temp) ? $item->metric->max_temp : $item->metric->min_temp,
+                        'min' => $item->metric->min_temp
                     ),
-                    'midia' => array(
-                        'icon' => $this->getPath() . $item->$period_type->icon_code . '_icon.png'
-                    )
                 );
 
                 if($i >= 4)
@@ -95,6 +95,7 @@ final class WeatherChannelAction
                     break;
                 }
             }
+
 
             FileSystemCache::store($key, $data, 1800);
 
@@ -130,7 +131,6 @@ final class WeatherChannelAction
     private function setCityId($city_id)
     {
         $this->city_id = $city_id;
-        $this->city_country = substr($this->city_id, 0, 2);
     }
 
     /**
@@ -146,7 +146,7 @@ final class WeatherChannelAction
      */
     private function getLocation()
     {
-        $doc = phpQuery::newDocumentFileHTML('http://www.weather.com/pt-BR/clima/hoje/l/' . $this->getCityId() . ':1:' . $this->getCityCountry());
+        $doc = phpQuery::newDocumentFileHTML('http://www.weather.com/pt-BR/clima/hoje/l/' . $this->getCityId() . ':1:BR');
         $doc->find('link')->remove();
         $doc->find('meta')->remove();
 
@@ -185,13 +185,5 @@ final class WeatherChannelAction
     public function setCityName($city_name)
     {
         $this->city_name = mb_check_encoding($city_name, 'UTF-8') ? $city_name : utf8_encode($city_name);
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getCityCountry()
-    {
-        return $this->city_country;
     }
 }

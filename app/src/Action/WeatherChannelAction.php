@@ -14,7 +14,7 @@ use Stringy\Stringy as S;
 final class WeatherChannelAction
 {
     private $city_id, $city_name, $city_country;
-    private $locale = 'pt_BR';
+    private $locale;
     private $path = 'http://conteudo.farolsign.com.br/weather_channel/v1/data/uploads/images/';
 
     public function __construct()
@@ -131,6 +131,17 @@ final class WeatherChannelAction
     {
         $this->city_id = $city_id;
         $this->city_country = substr($this->city_id, 0, 2);
+
+        $locales = [
+            'BR' => 'pt_BR',
+            'AR' => 'es_AR',
+            'US' => 'en_US'
+        ];
+
+        if(array_key_exists(strtoupper($this->city_country), $locales))
+            $this->locale = $locales[strtoupper($this->city_country)];
+        else
+            $this->locale = 'pt_BR';
     }
 
     /**

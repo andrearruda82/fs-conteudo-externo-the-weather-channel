@@ -1,20 +1,18 @@
 <?php
-namespace App\Action;
+namespace App\V1\Action;
 
 use Slim\Http\Request,
     Slim\Http\Response;
 
-use Thapp\XmlBuilder\XMLBuilder,
-    Thapp\XmlBuilder\Normalizer;
-
 use phpQuery;
 use FileSystemCache;
 use Stringy\Stringy as S;
+use App\V2\Service\SimpleXMLExtended;
 
 final class WeatherChannelAction
 {
     private $city_id, $city_name, $city_country;
-    private $locale;
+    private $locale = null;
     private $path = 'http://conteudo.farolsign.com.br/weather_channel/v1/data/uploads/images/';
 
     public function __construct()
@@ -28,6 +26,11 @@ final class WeatherChannelAction
         if(isset($args['city-name']))
         {
             $this->setCityName($args['city-name']);
+        }
+
+        if(isset($args['locale']))
+        {
+            $this->setCityName($args['locale']);
         }
 
         $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
@@ -97,21 +100,41 @@ final class WeatherChannelAction
             }
 
             FileSystemCache::store($key, $data, 1800);
-
         }
 
-        $xmlBuilder = new XmlBuilder('root');
-        $xmlBuilder->setSingularizer(function ($name){
-            if ('forecasts' === $name)
-            {
-                return 'item';
-            }
+        $json = json_decode(json_encode($data));
 
-            return $name;
-        });
-        $xmlBuilder->load($data);
-        $xml_output = $xmlBuilder->createXML(true);
-        $response->write($xml_output);
+        $xml = new SimpleXMLExtended('<root/>');
+        $info = $xml->addChild('info');
+        $info->addChild('date');
+        $info->date->addChild('created', $json->info->date->created);
+        $info->date->addChild('published', $json->info->date->published);
+        $info->addChild('location')->addChild('city', $json->info->location->city);
+
+        $now = $xml->addChild('now');
+        $now->addChild('temp', $json->now->temp);
+        $now->addChild('prospect');
+        $now->prospect->addChild('temp');
+        $now->prospect->temp->addChild('max', $json->now->prospect->temp->max);
+        $now->prospect->temp->addChild('min', $json->now->prospect->temp->min);
+        $now->addChild('midia');
+        $now->midia->addChild('icon', $json->now->midia->icon);
+        $now->midia->addChild('background', $json->now->midia->background);
+
+        $forecasts = $xml->addChild('forecasts');
+        foreach ($json->forecasts as $forecast)
+        {
+            $item = $forecasts->addChild('item');
+            $item->addChild('weekday', $forecast->weekday);
+            $item->addChild('phrases')->addChild('pop', $forecast->phrases->pop);
+            $item->phrases->addChild('narrative', $forecast->phrases->narrative);
+            $item->addChild('temp');
+            $item->temp->addChild('max', $forecast->temp->max);
+            $item->temp->addChild('min', $forecast->temp->min);
+            $item->addChild('midia')->addChild('icon', $forecast->midia->icon);
+        }
+
+        $response->write($xml->asXML());
         $response = $response->withHeader('content-type', 'application/xml; charset=utf-8');
         return $response;
     }
@@ -132,16 +155,19 @@ final class WeatherChannelAction
         $this->city_id = $city_id;
         $this->city_country = substr($this->city_id, 0, 2);
 
-        $locales = [
-            'BR' => 'pt_BR',
-            'AR' => 'es_AR',
-            'US' => 'en_US'
-        ];
+        if(is_null($this->getLocale()))
+        {
+            $locales = [
+                'BR' => 'pt_BR',
+                'AR' => 'es_AR',
+                'US' => 'en_US'
+            ];
 
-        if(array_key_exists(strtoupper($this->city_country), $locales))
-            $this->locale = $locales[strtoupper($this->city_country)];
-        else
-            $this->locale = 'pt_BR';
+            if(array_key_exists(strtoupper($this->city_country), $locales))
+                $this->locale = $locales[strtoupper($this->city_country)];
+            else
+                $this->locale = 'pt_BR';
+        }
     }
 
     /**
@@ -150,6 +176,15 @@ final class WeatherChannelAction
     private function getLocale()
     {
         return $this->locale;
+    }
+
+
+    /**
+     * @param $locale
+     */
+    private function setLocale($locale)
+    {
+        $this->locale = $locale;
     }
 
     /**

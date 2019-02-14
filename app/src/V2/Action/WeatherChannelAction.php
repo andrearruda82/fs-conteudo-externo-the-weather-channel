@@ -10,6 +10,9 @@ use FileSystemCache;
 use Stringy\Stringy as S;
 use App\V2\Service\SimpleXMLExtended;
 
+use Carbon\Carbon,
+    Carbon\CarbonTimeZone;
+
 final class WeatherChannelAction
 {
     private $city_id,
@@ -34,7 +37,7 @@ final class WeatherChannelAction
         if($data === false || $forceFileCached == true)
         {
             $srcPublished = sprintf('http://dsx.weather.com/cs/v2/datetime/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
-            $published = strtotime(json_decode(file_get_contents($srcPublished), true)['datetime']);
+            $published = json_decode(file_get_contents($srcPublished));
 
             $srcNow = sprintf('http://dsx.weather.com/wxd/v2/MORecord/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
             $now = json_decode(file_get_contents($srcNow))->MOData;
@@ -45,8 +48,8 @@ final class WeatherChannelAction
             $data = array(
                 'info' => array(
                     'date' => array(
-                        'created' => date('Y-m-d H:i:s'),
-                        'published' => date('Y-m-d H:i:s', $published),
+                        'created' => (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s'),
+                        'published' => Carbon::createFromFormat('Y-m-d\TH:i:s.uP',  $published->datetime)->format('Y-m-d H:i:s'),
                     ),
                     'location' => [
                         'city' => $this->getCityName()

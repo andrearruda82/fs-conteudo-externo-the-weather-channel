@@ -28,10 +28,13 @@ final class WeatherChannelAction
         $this->setCityId($args['city-id']);
         $this->setLocale($args['locale']);
 
+        if(!empty($args['city-name']))
+            $this->setCityName($args['city-name']);
+
         $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
 
         FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
-        $key = FileSystemCache::generateCacheKey($this->getCityId());
+        $key = FileSystemCache::generateCacheKey(sprintf('v2.%s', $this->getCityId()));
         $data = FileSystemCache::retrieve($key);
 
         if($data === false || $forceFileCached == true)
@@ -177,6 +180,16 @@ final class WeatherChannelAction
         }
 
         return $this->city_name;
+    }
+
+    /**
+     * @param null $city_name
+     * @return WeatherChannelAction
+     */
+    public function setCityName($city_name)
+    {
+        $this->city_name = $city_name;
+        return $this;
     }
 
     /**

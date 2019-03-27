@@ -35,8 +35,8 @@ final class WeatherChannelAction
 
         $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
 
-        FileSystemCache::$cacheDir = __DIR__ . '/../../../cache/tmp';
-        $key = FileSystemCache::generateCacheKey($this->getCityId());
+        FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
+        $key = FileSystemCache::generateCacheKey(sprintf('v1.%s', $this->getCityId()));
         $data = FileSystemCache::retrieve($key);
 
         if($data === false || $forceFileCached == true)

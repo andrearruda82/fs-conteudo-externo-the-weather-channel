@@ -21,7 +21,7 @@ final class WeatherChannelAction
             $locale = null,
             $language = null;
 
-    private $path = 'http://conteudo.farolsign.com.br/weather_channel/v1/data/uploads/images/';
+    private $path = 'http://weather.channel.scripts.farolsign.com.br/uploads/images/';
 
     public function __invoke(Request $request, Response $response, $args)
     {

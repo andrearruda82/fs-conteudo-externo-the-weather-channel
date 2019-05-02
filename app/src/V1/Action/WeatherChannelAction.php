@@ -13,7 +13,7 @@ final class WeatherChannelAction
 {
     private $city_id, $city_name, $city_country;
     private $locale = null;
-    private $path = 'http://conteudo.farolsign.com.br/weather_channel/v1/data/uploads/images/';
+    private $path;
 
     public function __construct()
     {
@@ -34,6 +34,10 @@ final class WeatherChannelAction
         }
 
         $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
+
+        /** @var \Slim\Http\Uri $uri */
+        $uri = $request->getUri();
+        $this->path = sprintf('%s://%s', $uri->getScheme(), $uri->getHost() . ($uri->getPort() ? ':' .$uri->getPort() : '')) . '/uploads/images/';
 
         FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
         $key = FileSystemCache::generateCacheKey(sprintf('v1.%s', $this->getCityId()));

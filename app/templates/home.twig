@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <title>Farol Sign - Scripts - Weather Channel</title>
+
+    <!-- Meta -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8"/>
+    <!-- #Meta -->
+
+    <!-- Stylesheets -->
+    <link href="{{ base_url() }}/images/favicon.png" rel="shortcut icon" type="image/vnd.microsoft.icon">
+    <link href='//fonts.googleapis.com/css?family=Lato:300' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <link href='{{ base_url() }}/css/style.css' rel='stylesheet' type='text/css'>
+    <!-- #Stylesheets -->
+
+    <!-- Javascript -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <!-- #Javascript -->
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <img src="{{ base_url() }}/images/logo-farolsign.png" class="center-block">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <h1 class="text-center">Weather Channel</h1>
+                <p class="text-center">
+                    Script para obter feeds com informações do clima usando a fonte Weather Channel.
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h2 class="text-center">V1</h2>
+                <p>
+                    <ul>
+                        <li>
+                            URL:
+                            <ol>
+                                <li>
+                                    {{ base_url() }}/&lt;locale&gt;/&lt;cityId&gt;/&lt;cityName&gt;
+                                </li>
+                            </ol>
+                        </li>
+                        <li>
+                            Parâmetros:
+                            <ol>
+                                <li>cityId (BRXX0050, BRXX0232)</li>
+                                <li>cityName? (Campinas, São Paulo) esse paramento NÃO é obrigatório.</li>
+                            </ol>
+                        </li>
+                        <li>
+                            Exemplo:
+                            <ol>
+                                <li>
+                                    <a href="{{ path_for('v1.weather-channel', { 'city-id': 'BRXX0050' }) }}">{{ base_url() }}{{ path_for('v1.weather-channel', { 'city-id': 'BRXX0050' }) }}</a>
+                                </li>
+                            </ol>
+                        </li>
+                    </ul>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h2 class="text-center">V2</h2>
+                <p>
+                    <ul>
+                        <li>
+                            URL:
+                            <ol>
+                                <li>
+                                    {{ base_url() }}/v2/&lt;locale&gt;/&lt;cityId&gt;/&lt;cityName&gt;
+                                </li>
+                            </ol>
+                        </li>
+                        <li>
+                            Parâmetros:
+                            <ol>
+                                <li>locale (pt-BR, es-PE, en-US)</li>
+                                <li>cityId (BRXX0050, BRXX0232)</li>
+                                <li>cityName? (Campinas, São Paulo) esse paramento NÃO é obrigatório.</li>
+                            </ol>
+                        </li>
+                        <li>
+                            Exemplo:
+                            <ol>
+                                <li>
+                                    <a href="{{ path_for('v2.weather-channel', { 'locale': 'pt-BR', 'city-id': 'BRXX0050' }) }}">{{ base_url() }}{{ path_for('v2.weather-channel', { 'locale': 'pt-BR', 'city-id': 'BRXX0050' }) }}</a>
+                                </li>
+                            </ol>
+                        </li>
+                    </ul>
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Cache</h3>
+                <p>
+                    Importante lembrar que esse script mantem um cache de cerca de 2 horas.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

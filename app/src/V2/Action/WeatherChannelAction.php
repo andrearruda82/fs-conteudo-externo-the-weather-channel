@@ -21,7 +21,7 @@ final class WeatherChannelAction
             $locale = null,
             $language = null;
 
-    private $path = 'http://weather.channel.scripts.farolsign.com.br/uploads/images/';
+    private $path;
 
     public function __invoke(Request $request, Response $response, $args)
     {
@@ -32,6 +32,10 @@ final class WeatherChannelAction
             $this->setCityName($args['city-name']);
 
         $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
+
+        /** @var \Slim\Http\Uri $uri */
+        $uri = $request->getUri();
+        $this->path = sprintf('%s://%s', $uri->getScheme(), $uri->getHost() . ($uri->getPort() ? ':' .$uri->getPort() : '')) . '/uploads/images/';
 
         FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
         $key = FileSystemCache::generateCacheKey(sprintf('v2.%s', $this->getCityId()));
@@ -104,7 +108,7 @@ final class WeatherChannelAction
                 }
             }
 
-            FileSystemCache::store($key, $data, 1800);
+//            FileSystemCache::store($key, $data, 1800);
         }
 
         $json = json_decode(json_encode($data));
@@ -173,9 +177,7 @@ final class WeatherChannelAction
             $srcUrl = sprintf('http://www.weather.com/%s/weather/today/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
             $doc = phpQuery::newDocumentFileHTML($srcUrl);
 
-            $city_name = $doc->find('body div.layout-berlin div.today_nowcard header.loc-container span h1')->text();
-            $city_name = substr($city_name, 0, strpos($city_name, ', '));
-
+            $city_name = $doc->find('body div.today_nowcard div.today_nowcard-main header h1.today_nowcard-location')->text();
             $this->city_name = (string) S::create($city_name)->toLowerCase()->titleize(['da', 'de', 'do']);
         }
 

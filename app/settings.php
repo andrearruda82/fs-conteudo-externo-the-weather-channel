@@ -9,7 +9,7 @@ return [
         'view' => [
             'template_path' => __DIR__ . '/templates',
             'twig' => [
-                'cache' => __DIR__ . '/../cache/tmp',
+                'cache' => __DIR__ . '/../data/cache/twig',
                 'debug' => true,
                 'auto_reload' => true,
             ],

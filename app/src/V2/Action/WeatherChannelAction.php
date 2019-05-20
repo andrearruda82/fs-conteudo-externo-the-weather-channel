@@ -111,7 +111,7 @@ final class WeatherChannelAction
                 }
             }
 
-//            FileSystemCache::store($key, $data, 1800);
+            FileSystemCache::store($key, $data, 3600);
         }
 
         $json = json_decode(json_encode($data));

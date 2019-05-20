@@ -10,6 +10,9 @@ use FileSystemCache;
 use Stringy\Stringy as S;
 use App\V2\Service\SimpleXMLExtended;
 
+use Goutte\Client;
+use GuzzleHttp\Client as GuzzleClient;
+
 use Carbon\Carbon,
     Carbon\CarbonTimeZone;
 
@@ -174,10 +177,18 @@ final class WeatherChannelAction
     {
         if(is_null($this->city_name))
         {
-            $srcUrl = sprintf('http://www.weather.com/%s/weather/today/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
-            $doc = phpQuery::newDocumentFileHTML($srcUrl);
+            $srcUrl = sprintf('https://weather.com/%s/weather/today/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
 
-            $city_name = $doc->find('body div.today_nowcard div.today_nowcard-main header h1.today_nowcard-location')->text();
+            $goutteClient = new Client();
+            $guzzleClient = new GuzzleClient(array(
+                'timeout' => 60,
+                'verify' => false
+            ));
+            $goutteClient->setClient($guzzleClient);
+
+            $crawler = $goutteClient->request('GET', $srcUrl);
+
+            $city_name = trim($crawler->filter('div.today_nowcard header h1')->text());
             $this->city_name = (string) S::create($city_name)->toLowerCase()->titleize(['da', 'de', 'do']);
         }
 

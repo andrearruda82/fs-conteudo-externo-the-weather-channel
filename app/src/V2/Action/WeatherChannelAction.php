@@ -41,7 +41,7 @@ final class WeatherChannelAction
         $this->path = sprintf('%s://%s', $uri->getScheme(), $uri->getHost() . ($uri->getPort() ? ':' .$uri->getPort() : '')) . '/uploads/images/';
 
         FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
-        $key = FileSystemCache::generateCacheKey(sprintf('v2.%s', $this->getCityId()));
+        $key = FileSystemCache::generateCacheKey(sprintf('v2.%s.%s', $this->getCityId(), $this->getLocale()));
         $data = FileSystemCache::retrieve($key);
 
         if($data === false || $forceFileCached == true)
@@ -81,8 +81,7 @@ final class WeatherChannelAction
                 'forecasts' => array()
             );
 
-            foreach ($forecasts as $i => $item)
-            {
+            foreach ($forecasts as $i => $item) {
                 if (isset($item->day))
                     $period_type = 'day';
                 else
@@ -177,7 +176,7 @@ final class WeatherChannelAction
     {
         if(is_null($this->city_name))
         {
-            $srcUrl = sprintf('https://weather.com/%s/weather/today/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
+            $srcUrl = sprintf('https://weather.com/%s/weather/tenday/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
 
             $goutteClient = new Client();
             $guzzleClient = new GuzzleClient(array(
@@ -188,7 +187,12 @@ final class WeatherChannelAction
 
             $crawler = $goutteClient->request('GET', $srcUrl);
 
-            $city_name = trim($crawler->filter('div.today_nowcard header h1')->text());
+            $selector = 'span[data-testid=PresentationName]';
+            $city_name = $crawler->filter($selector)->text();
+            if(!strpos($city_name, ',') === false) {
+                $city_name = substr($city_name, 0, strpos($city_name, ','));
+            }
+
             $this->city_name = (string) S::create($city_name)->toLowerCase()->titleize(['da', 'de', 'do']);
         }
 

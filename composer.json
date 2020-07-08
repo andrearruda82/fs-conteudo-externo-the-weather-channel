@@ -24,7 +24,8 @@
         "jdorn/file-system-cache": "dev-master",
         "danielstjules/stringy": "~2.3",
         "nesbot/carbon": "^2.11",
-        "fabpot/goutte": "^3.2"
+        "fabpot/goutte": "^4.0",
+        "symfony/http-client": "^5.1"
     },
     "require-dev": {
         "symfony/var-dumper": "^4.2"

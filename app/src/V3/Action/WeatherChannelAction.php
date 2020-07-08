@@ -92,7 +92,7 @@ final class WeatherChannelAction
                 ->filter('section > div > ul > li')
                 ->count();
             $idx = 0;
-            for ($i = 1; $i < $total; $i++) {
+            for ($i = 0; $i < $total; $i++) {
                 $item = $this->crawlerNow
                     ->filter('body main div.region-main > div')->eq(4)
                     ->filter('section > div > ul > li')

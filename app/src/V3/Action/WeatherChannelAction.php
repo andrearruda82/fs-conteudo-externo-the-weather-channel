@@ -75,7 +75,7 @@ final class WeatherChannelAction
                     'temp' => $this->getNowTemp(),
                     'prospect' => [
                         'temp' => [
-                            'max' => $this->getNowProspectTempMax(),
+                            'max' => $this->getNowProspectTempMax() < $this->getNowProspectTempMin() ? $this->getNowTemp() : $this->getNowProspectTempMax(),
                             'min' => $this->getNowProspectTempMin()
                         ]
                     ],
@@ -106,8 +106,8 @@ final class WeatherChannelAction
                         'narrative' => '',
                     ],
                     'temp' => [
-                        'max' => $item->filter('a > div[data-testid=SegmentHighTemp] > span')->text(),
-                        'min' => $item->filter('a > div[data-testid=SegmentLowTemp] > span')->text()
+                        'max' => (int) $item->filter('a > div[data-testid=SegmentHighTemp] > span')->text(),
+                        'min' => (int) $item->filter('a > div[data-testid=SegmentLowTemp] > span')->text()
                     ],
                     'midia' => [
                         'icon' => $this->getPath() . $item->filter('svg')->attr('skycode') . '_icon.png'
@@ -255,18 +255,18 @@ final class WeatherChannelAction
     }
 
     private function getNowTemp() {
-        return $this->crawlerNow->filter('body main div.region-main section.card span[data-testid=TemperatureValue]')->text();
+        return (int) $this->crawlerNow->filter('body main div.region-main section.card span[data-testid=TemperatureValue]')->text();
     }
 
     private function getNowProspectTempMax() {
-        return $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentHighTemp] > span')->text();
+        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentHighTemp] > span')->text();
     }
 
     private function getNowProspectTempMin() {
-        return $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentLowTemp] > span')->text();
+        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentLowTemp] > span')->text();
     }
 
     private function getNowMidiaId() {
-        return $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('svg')->attr('skycode');
+        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('svg')->attr('skycode');
     }
 }

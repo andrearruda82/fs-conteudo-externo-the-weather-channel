@@ -66,7 +66,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
                 $json->forecasts[$i]->temp->max = $this->getForecastTempMax($i);
                 $json->forecasts[$i]->temp->min = $this->getForecastTempMin($i);
 
-                $json->forecasts[$i]->midia->icon = sprintf('%s%s_bg.jpg', $this->getPathUpload(), $this->getForecastMidiaId($i));
+                $json->forecasts[$i]->midia->icon = sprintf('%s%s_icon.png', $this->getPathUpload(), $this->getForecastMidiaId($i));
             }
 
             $data = json_decode(json_encode($json), true);

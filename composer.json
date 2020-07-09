@@ -17,6 +17,7 @@
         }
     },
     "require": {
+        "php": "^7.3",
         "slim/slim": "^3.0",
         "slim/twig-view": "^2.0",
         "electrolinux/phpquery": "*",
@@ -25,7 +26,8 @@
         "danielstjules/stringy": "~2.3",
         "nesbot/carbon": "^2.11",
         "fabpot/goutte": "^4.0",
-        "symfony/http-client": "^5.1"
+        "symfony/http-client": "^5.1",
+        "ext-json": "*"
     },
     "require-dev": {
         "symfony/var-dumper": "^4.2"

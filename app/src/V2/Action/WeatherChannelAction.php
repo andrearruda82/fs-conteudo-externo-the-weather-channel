@@ -2,254 +2,201 @@
 
 namespace App\V2\Action;
 
-use Slim\Http\Request,
-    Slim\Http\Response;
-
-use phpQuery;
-use FileSystemCache;
-use Stringy\Stringy as S;
-use App\V2\Service\SimpleXMLExtended;
-
+use App\Action\WeatherChannelActionAbstract;
 use Goutte\Client;
-use GuzzleHttp\Client as GuzzleClient;
+use Slim\Http\Request;
+use Slim\Http\Response;
+use Symfony\Component\HttpClient\HttpClient;
 
-use Carbon\Carbon,
-    Carbon\CarbonTimeZone;
-
-final class WeatherChannelAction
+class WeatherChannelAction extends WeatherChannelActionAbstract
 {
-    private $city_id,
-            $city_name = null,
-            $country = null,
-            $locale = null,
-            $language = null;
+    private $goutteClient;
+    private $crawlerNow;
+    private $crawlerTenDay;
 
-    private $path;
+    public function __construct() {
+        $this->goutteClient = new Client(HttpClient::create([
+            'timeout' => 60,
+            'verify_peer' => false,
+            'verify_host' => false,
+        ]));
+
+        parent::__construct('V2');
+    }
 
     public function __invoke(Request $request, Response $response, $args)
     {
         $this->setCityId($args['city-id']);
         $this->setLocale($args['locale']);
+        $this->setPathUpload($request->getUri());
 
         if(!empty($args['city-name']))
             $this->setCityName($args['city-name']);
 
-        $forceFileCached = isset($request->getQueryParams()['forceFileCached']) ? $request->getQueryParams()['forceFileCached'] : false;
+        if(isset($request->getQueryParams()['forceFileCached']))
+            $this->setForceFileCached($request->getQueryParams()['forceFileCached']);
 
-        /** @var \Slim\Http\Uri $uri */
-        $uri = $request->getUri();
-        $this->path = sprintf('%s://%s', $uri->getScheme(), $uri->getHost() . ($uri->getPort() ? ':' .$uri->getPort() : '')) . '/uploads/images/';
+        $data = $this->getData();
 
-        FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
-        $key = FileSystemCache::generateCacheKey(sprintf('v2.%s.%s', $this->getCityId(), $this->getLocale()));
-        $data = FileSystemCache::retrieve($key);
 
-        if($data === false || $forceFileCached == true)
+        if($data === false || $this->isForceFileCached() == true)
         {
-            $srcPublished = sprintf('http://dsx.weather.com/cs/v2/datetime/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
-            $published = json_decode(file_get_contents($srcPublished));
+            $this->crawlerNow = $this->goutteClient->request('GET', sprintf('https://weather.com/pt-BR/clima/hoje/l/%s', $this->getCityId()));
+            $this->crawlerTenDay = $this->goutteClient->request('GET', sprintf('https://weather.com/%s/weather/tenday/l/%s', $this->getLocale(), $this->getCityId()));
 
-            $srcNow = sprintf('http://dsx.weather.com/wxd/v2/MORecord/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
-            $now = json_decode(file_get_contents($srcNow))->MOData;
+            $json = $this->dataStructure();
+            $json->info->date->created = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+            $json->info->date->published = $this->getDatePublished()->format('Y-m-d H:i:s');
+            $json->info->location->city = $this->getLocationCityName();
 
-            $srcNow = sprintf('http://dsx.weather.com/wxd/v2/15DayForecast/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
-            $forecasts = json_decode(file_get_contents($srcNow))->fcstdaily15alluoms->forecasts;
+            $json->now->temp = $this->getNowTemp();
+            $json->now->prospect->temp->max = $this->getNowPropesctTempMax() < $this->getNowPropesctTempMin() ? $this->getNowTemp() : $this->getNowPropesctTempMax();
+            $json->now->prospect->temp->min = $this->getNowPropesctTempMin();
+            $json->now->midia->icon = sprintf('%s%s_icon.png', $this->getPathUpload(), $this->getNowMidiaId());
+            $json->now->midia->background = sprintf('%s%s_bg.jpg', $this->getPathUpload(), $this->getNowMidiaId());
 
-            $data = array(
-                'info' => array(
-                    'date' => array(
-                        'created' => (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s'),
-                        'published' => Carbon::createFromFormat('Y-m-d\TH:i:s.uP',  $published->datetime)->format('Y-m-d H:i:s'),
-                    ),
-                    'location' => [
-                        'city' => $this->getCityName()
-                    ],
-                ),
-                'now' => array(
-                    'temp' => (string) $now->tmpC,
-                    'prospect' => array(
-                        'temp' => array(
-                            'max' => (string) $now->tmpMx24C,
-                            'min' => (string) $now->tmpMn24C
-                        ),
-                    ),
-                    'midia' => array(
-                        'icon' => $this->getPath() . $now->sky . '_icon.png',
-                        'background' => $this->getPath() . $now->sky . '_bg.jpg'
-                    )
-                ),
-                'forecasts' => array()
-            );
+            $json->forecasts[0]->phrases->pop = $this->getForecastNowPhrases();
+            $json->forecasts[0]->phrases->narrative = $json->forecasts[0]->phrases->pop;
 
-            foreach ($forecasts as $i => $item) {
-                if (isset($item->day))
-                    $period_type = 'day';
-                else
-                    $period_type = 'night';
+            for($i = 1; $i < 4; $i++) {
+                $json->forecasts[$i]->weekday = $this->getForecastWeekday($i);
+                $json->forecasts[$i]->phrases->pop = $this->getForecastPhrases($i);
+                $json->forecasts[$i]->phrases->narrative = $json->forecasts[$i]->phrases->pop;
 
-                $forecast = $item->$period_type;
+                $json->forecasts[$i]->temp->max = $this->getForecastTempMax($i);
+                $json->forecasts[$i]->temp->min = $this->getForecastTempMin($i);
 
-                $data['forecasts'][$i] = array(
-                    'weekday' => str_replace('-feira', '', $forecast->daypart_name),
-                    'phrases' => array(
-                        'pop' => $forecast->pop_phrase,
-                        'narrative' => $item->metric->narrative
-                    ),
-                    'temp' => array(
-                        'max' => (string) (!empty($item->metric->max_temp) ? $item->metric->max_temp : $item->metric->min_temp),
-                        'min' => (string) $item->metric->min_temp
-                    ),
-                    'midia' => array(
-                        'icon' => $this->getPath() . $item->$period_type->icon_code . '_icon.png'
-                    )
-                );
-
-                if($i >= 4)
-                {
-                    break;
-                }
+                $json->forecasts[$i]->midia->icon = sprintf('%s%s_bg.jpg', $this->getPathUpload(), $this->getForecastMidiaId($i));
             }
 
-            FileSystemCache::store($key, $data, 3600);
+            $data = json_decode(json_encode($json), true);
         }
 
-        $json = json_decode(json_encode($data));
-
-        $xml = new SimpleXMLExtended('<root/>');
-        $info = $xml->addChild('info');
-        $info->addChild('date');
-        $info->date->addChild('created', $json->info->date->created);
-        $info->date->addChild('published', $json->info->date->published);
-        $info->addChild('location')->addChild('city', $json->info->location->city);
-
-        $now = $xml->addChild('now');
-        $now->addChild('temp', $json->now->temp);
-        $now->addChild('prospect');
-        $now->prospect->addChild('temp');
-        $now->prospect->temp->addChild('max', $json->now->prospect->temp->max);
-        $now->prospect->temp->addChild('min', $json->now->prospect->temp->min);
-        $now->addChild('midia');
-        $now->midia->addChild('icon', $json->now->midia->icon);
-        $now->midia->addChild('background', $json->now->midia->background);
-
-        $forecasts = $xml->addChild('forecasts');
-        foreach ($json->forecasts as $forecast)
-        {
-            $item = $forecasts->addChild('item');
-            $item->addChild('weekday', $forecast->weekday);
-            $item->addChild('phrases')->addChild('pop', $forecast->phrases->pop);
-            $item->phrases->addChild('narrative', $forecast->phrases->narrative);
-            $item->addChild('temp');
-            $item->temp->addChild('max', $forecast->temp->max);
-            $item->temp->addChild('min', $forecast->temp->min);
-            $item->addChild('midia')->addChild('icon', $forecast->midia->icon);
-        }
-
-        $response->write($xml->asXML());
+        $response->write($this->arrayToXml($data)->asXML());
         $response = $response->withHeader('content-type', 'application/xml; charset=utf-8');
         return $response;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getCityId()
-    {
-        return $this->city_id;
+    private function getDatePublished() : \DateTime {
+        $timestampStr = $this->crawlerNow
+            ->filter('body main > div')->eq(1)
+            ->filter('div.region-main > div')->eq(0)
+            ->filter('section > div > div > div')
+            ->text()
+        ;
+
+        $time = substr($timestampStr, 6, 5) . ':00';
+        $date = date('Y-m-d ' . $time);
+
+        return \DateTime::createFromFormat('Y-m-d H:i:s', $date);
     }
 
-    /**
-     * @param mixed $city_id
-     * @return WeatherChannelAction
-     */
-    public function setCityId($city_id)
-    {
-        $this->city_id = $city_id;
-        $this->country = substr($this->city_id, 0, 2);
-        return $this;
-    }
+    private function getLocationCityName() : string {
+        if(is_null($this->getCityName())) {
+            $cityName = $this->crawlerTenDay
+                ->filter('body main > div')->eq(1)
+                ->filter('div.region-main > div')->eq(0)
+                ->filter('section.card > h1 > span > span')
+                ->text()
+            ;
 
-    /**
-     * @return mixed
-     */
-    public function getCityName()
-    {
-        if(is_null($this->city_name))
-        {
-            $srcUrl = sprintf('https://weather.com/%s/weather/tenday/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
-
-            $goutteClient = new Client();
-            $guzzleClient = new GuzzleClient(array(
-                'timeout' => 60,
-                'verify' => false
-            ));
-            $goutteClient->setClient($guzzleClient);
-
-            $crawler = $goutteClient->request('GET', $srcUrl);
-
-            $selector = 'span[data-testid=PresentationName]';
-            $city_name = $crawler->filter($selector)->text();
-            if(!strpos($city_name, ',') === false) {
-                $city_name = substr($city_name, 0, strpos($city_name, ','));
-            }
-
-            $this->city_name = (string) S::create($city_name)->toLowerCase()->titleize(['da', 'de', 'do']);
+            $this->setCityName($cityName);
         }
 
-        return $this->city_name;
+        return $this->getCityName();
     }
 
-    /**
-     * @param null $city_name
-     * @return WeatherChannelAction
-     */
-    public function setCityName($city_name)
-    {
-        $this->city_name = $city_name;
-        return $this;
+    private function getNowTemp() : int {
+        return (int) $this->crawlerNow
+            ->filter('body main > div')->eq(1)
+            ->filter('div.region-main > div')->eq(0)
+            ->filter('section > div > div')->eq(1)
+            ->filter('div span[data-testid=TemperatureValue]')
+            ->text();
     }
 
-    /**
-     * @return mixed
-     */
-    public function getCountry()
-    {
-        return $this->country;
+    private function getNowPropesctTemp(string $type) : int {
+        $type = strtolower(substr($type,0, 3));
+        $types = [
+            'max' => 1,
+            'min' => 2
+        ];
+
+        return (int) $this->crawlerNow
+            ->filter('body main > div')->eq(1)
+            ->filter('div.region-main > div')->eq(0)
+            ->filter('section > div > div')->eq(1)
+            ->filter('span')->eq($types[$type])
+            ->text();
     }
 
-
-    /**
-     * @return null
-     */
-    public function getLocale()
-    {
-        return $this->locale;
+    private function getNowPropesctTempMax() : int {
+        return $this->getNowPropesctTemp('max');
     }
 
-    /**
-     * @param null $locale
-     * @return WeatherChannelAction
-     */
-    public function setLocale($locale)
-    {
-        $this->locale = $locale;
-        $this->language = substr($this->locale, 0, 2);
-        return $this;
+    private function getNowPropesctTempMin() : int {
+        return $this->getNowPropesctTemp('min');
     }
 
-    /**
-     * @return null
-     */
-    public function getLanguage()
-    {
-        return $this->language;
+    private function getNowMidiaId() : int {
+        return (int) $this->crawlerNow
+            ->filter('body main > div')->eq(1)
+            ->filter('div.region-main > div')->eq(0)
+            ->filter('section > div > div')->eq(1)
+            ->filter('svg')
+            ->attr('skycode');
     }
 
-    /**
-     * @return string
-     */
-    private function getPath()
-    {
-        return $this->path;
+    private function getForecastWeekday(int $position) : string {
+        return $this->crawlerTenDay
+            ->filter('body main section.card div')->eq(1)
+            ->filter('details')->eq($position)
+            ->filter('summary > div > div > h3')
+            ->text();
+    }
+
+    private function getForecastPhrases(int $position) : string {
+        return $this->crawlerTenDay
+            ->filter('body main section.card div')->eq(1)
+            ->filter('details')->eq($position)
+            ->filter('summary > div > div > div[data-testid=wxIcon] > span')
+            ->text()
+        ;
+    }
+
+    private function getForecastTemp(int $position, string $type) : string {
+        $type = strtolower(substr($type,0, 3));
+        $types = [
+            'max' => 0,
+            'min' => 1
+        ];
+
+        return (int) $this->crawlerTenDay
+            ->filter('body main section.card div')->eq(1)
+            ->filter('details')->eq($position)
+            ->filter('summary > div > div > div[data-testid=detailsTemperature] span[data-testid=TemperatureValue]')->eq($types[$type])
+            ->text();
+    }
+
+    private function getForecastTempMax(int $position) : string {
+        return $this->getForecastTemp($position, 'max');
+    }
+
+    private function getForecastTempMin(int $position) : string {
+        return $this->getForecastTemp($position, 'min');
+    }
+
+    private function getForecastMidiaId(int $position) : int {
+        return (int) $this->crawlerTenDay
+            ->filter('body main section.card div')->eq(1)
+            ->filter('details')->eq($position)
+            ->filter('summary > div > div > div[data-testid=wxIcon] > svg')
+            ->attr('skycode');
+    }
+
+    private function getForecastNowPhrases() : string {
+        return $this->crawlerTenDay
+            ->filter('body main section.card details[data-testid=ExpandedDetailsCard] > div > div > p')
+            ->text();
     }
 }

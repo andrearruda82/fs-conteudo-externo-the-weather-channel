@@ -1,17 +1,20 @@
 <?php
 
-namespace App\V3\Action;
+namespace App\V2\Action;
 
-use App\V2\Service\SimpleXMLExtended;
-use Carbon\Carbon;
 use Slim\Http\Request,
     Slim\Http\Response;
 
-use Stringy\Stringy as S;
+use phpQuery;
 use FileSystemCache;
+use Stringy\Stringy as S;
+use App\V2\Service\SimpleXMLExtended;
 
 use Goutte\Client;
-use Symfony\Component\HttpClient\HttpClient;
+use GuzzleHttp\Client as GuzzleClient;
+
+use Carbon\Carbon,
+    Carbon\CarbonTimeZone;
 
 final class WeatherChannelAction
 {
@@ -22,18 +25,6 @@ final class WeatherChannelAction
             $language = null;
 
     private $path;
-
-    private $goutteClient;
-
-    private $crawlerNow;
-
-    public function __construct() {
-        $this->goutteClient = new Client(HttpClient::create([
-            'timeout' => 60,
-            'verify_peer' => false,
-            'verify_host' => false,
-        ]));
-    }
 
     public function __invoke(Request $request, Response $response, $args)
     {
@@ -50,75 +41,73 @@ final class WeatherChannelAction
         $this->path = sprintf('%s://%s', $uri->getScheme(), $uri->getHost() . ($uri->getPort() ? ':' .$uri->getPort() : '')) . '/uploads/images/';
 
         FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
-        $key = FileSystemCache::generateCacheKey(sprintf('v3.%s.%s', $this->getCityId(), $this->getLocale()));
+        $key = FileSystemCache::generateCacheKey(sprintf('v2.%s.%s', $this->getCityId(), $this->getLocale()));
         $data = FileSystemCache::retrieve($key);
 
         if($data === false || $forceFileCached == true)
         {
-            /**
-             * https://weather.com/en-US/clima/10dias/l/BRXX0050
-             */
-            $srcNow = sprintf('https://weather.com/%s/clima/hoje/l/%s', $this->getLocale(), $this->getCityId());
-            $this->crawlerNow = $this->goutteClient->request('GET', $srcNow);
-
             $srcPublished = sprintf('http://dsx.weather.com/cs/v2/datetime/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
             $published = json_decode(file_get_contents($srcPublished));
 
-            $data = [
-                'info' => [
-                    'date' => [
+            $srcNow = sprintf('http://dsx.weather.com/wxd/v2/MORecord/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
+            $now = json_decode(file_get_contents($srcNow))->MOData;
+
+            $srcNow = sprintf('http://dsx.weather.com/wxd/v2/15DayForecast/%s/%s:1:%s', str_replace('-', '_', $this->getLocale()), $this->getCityId(), $this->getCountry());
+            $forecasts = json_decode(file_get_contents($srcNow))->fcstdaily15alluoms->forecasts;
+
+            $data = array(
+                'info' => array(
+                    'date' => array(
                         'created' => (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s'),
                         'published' => Carbon::createFromFormat('Y-m-d\TH:i:s.uP',  $published->datetime)->format('Y-m-d H:i:s'),
-                    ],
+                    ),
                     'location' => [
                         'city' => $this->getCityName()
                     ],
-                ],
-                'now' => [
-                    'temp' => $this->getNowTemp(),
-                    'prospect' => [
-                        'temp' => [
-                            'max' => $this->getNowProspectTempMax() < $this->getNowProspectTempMin() ? $this->getNowTemp() : $this->getNowProspectTempMax(),
-                            'min' => $this->getNowProspectTempMin()
-                        ]
-                    ],
-                    'midia' => [
-                        'icon' => $this->getPath() . $this->getNowMidiaId() . '_icon.png',
-                        'background' => $this->getPath() . $this->getNowMidiaId() . '_bg.jpg'
-                    ]
-                ],
-                'forecasts' => []
-            ];
+                ),
+                'now' => array(
+                    'temp' => (string) $now->tmpC,
+                    'prospect' => array(
+                        'temp' => array(
+                            'max' => (string) $now->tmpMx24C,
+                            'min' => (string) $now->tmpMn24C
+                        ),
+                    ),
+                    'midia' => array(
+                        'icon' => $this->getPath() . $now->sky . '_icon.png',
+                        'background' => $this->getPath() . $now->sky . '_bg.jpg'
+                    )
+                ),
+                'forecasts' => array()
+            );
 
-            $total = $this->crawlerNow
-                ->filter('body main div.region-main > div')->eq(4)
-                ->filter('section > div > ul > li')
-                ->count();
-            $idx = 0;
-            for ($i = 0; $i < $total; $i++) {
-                $item = $this->crawlerNow
-                    ->filter('body main div.region-main > div')->eq(4)
-                    ->filter('section > div > ul > li')
-                    ->eq($i)
-                ;
+            foreach ($forecasts as $i => $item) {
+                if (isset($item->day))
+                    $period_type = 'day';
+                else
+                    $period_type = 'night';
 
-                $data['forecasts'][$idx] = [
-                    'weekday' => $item->filter('a > h3 > span')->text(),
-                    'phrases' => [
-                        'pop' => '',
-                        'narrative' => '',
-                    ],
-                    'temp' => [
-                        'max' => (int) $item->filter('a > div[data-testid=SegmentHighTemp] > span')->text(),
-                        'min' => (int) $item->filter('a > div[data-testid=SegmentLowTemp] > span')->text()
-                    ],
-                    'midia' => [
-                        'icon' => $this->getPath() . $item->filter('svg')->attr('skycode') . '_icon.png'
-                    ]
-                ];
+                $forecast = $item->$period_type;
 
+                $data['forecasts'][$i] = array(
+                    'weekday' => str_replace('-feira', '', $forecast->daypart_name),
+                    'phrases' => array(
+                        'pop' => $forecast->pop_phrase,
+                        'narrative' => $item->metric->narrative
+                    ),
+                    'temp' => array(
+                        'max' => (string) (!empty($item->metric->max_temp) ? $item->metric->max_temp : $item->metric->min_temp),
+                        'min' => (string) $item->metric->min_temp
+                    ),
+                    'midia' => array(
+                        'icon' => $this->getPath() . $item->$period_type->icon_code . '_icon.png'
+                    )
+                );
 
-                $idx++;
+                if($i >= 4)
+                {
+                    break;
+                }
             }
 
             FileSystemCache::store($key, $data, 3600);
@@ -187,9 +176,16 @@ final class WeatherChannelAction
     {
         if(is_null($this->city_name))
         {
-            $srcUrl = sprintf('https://weather.com/%s/weather/tenday/l/%s:1:%s', $this->getLocale(), $this->getCityId(), $this->getCountry());
+            $srcUrl = sprintf('https://weather.com/%s/weather/tenday/l/%s:1:%s', $this->getLocale(), $this->getCityId(),$this->getCountry());
 
-            $crawler = $this->goutteClient->request('GET', $srcUrl);
+            $goutteClient = new Client();
+            $guzzleClient = new GuzzleClient(array(
+                'timeout' => 60,
+                'verify' => false
+            ));
+            $goutteClient->setClient($guzzleClient);
+
+            $crawler = $goutteClient->request('GET', $srcUrl);
 
             $selector = 'span[data-testid=PresentationName]';
             $city_name = $crawler->filter($selector)->text();
@@ -255,21 +251,5 @@ final class WeatherChannelAction
     private function getPath()
     {
         return $this->path;
-    }
-
-    private function getNowTemp() {
-        return (int) $this->crawlerNow->filter('body main div.region-main section.card span[data-testid=TemperatureValue]')->text();
-    }
-
-    private function getNowProspectTempMax() {
-        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentHighTemp] > span')->text();
-    }
-
-    private function getNowProspectTempMin() {
-        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('a > div[data-testid=SegmentLowTemp] > span')->text();
-    }
-
-    private function getNowMidiaId() {
-        return (int) $this->crawlerNow->filter('body main div.region-main > div')->eq(4)->filter('section > div > ul > li')->eq(0)->filter('svg')->attr('skycode');
     }
 }

@@ -9,19 +9,20 @@ use Slim\Http\Uri;
 
 abstract class WeatherChannelActionAbstract
 {
+    const TTL = 3600;
     private $pathUpload = null;
     private $city_id = null;
     private $city_name = null;
     private $locale = null;
     private $keyCacheStrg = '';
     private $keyCache = null;
-    private $forceFileCached = true;
+    private $forceFileCached = false;
     private $data = false;
 
     public function __construct($keyCacheStrg = 'cache')
     {
         $this->keyCacheStrg = $keyCacheStrg;
-        FileSystemCache::$cacheDir = __DIR__ . '/../../../../data/cache/tmp';
+        FileSystemCache::$cacheDir = __DIR__ . '/../../../data/cache/tmp';
     }
 
     public function setPathUpload(Uri $uri) : self {
@@ -82,6 +83,11 @@ abstract class WeatherChannelActionAbstract
 
     public function getData() {
         return FileSystemCache::retrieve($this->getKeyCache());
+    }
+
+    public function setData(array $data) : self{
+        FileSystemCache::store($this->getKeyCache(), $data, self::TTL);
+        return $this;
     }
 
     public function arrayToXml(array $data) : SimpleXMLExtended {

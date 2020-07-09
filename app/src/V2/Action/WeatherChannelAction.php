@@ -3,6 +3,7 @@
 namespace App\V2\Action;
 
 use App\Action\WeatherChannelActionAbstract;
+use FileSystemCache;
 use Goutte\Client;
 use Slim\Http\Request;
 use Slim\Http\Response;
@@ -37,8 +38,6 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
             $this->setForceFileCached($request->getQueryParams()['forceFileCached']);
 
         $data = $this->getData();
-
-
         if($data === false || $this->isForceFileCached() == true)
         {
             $this->crawlerNow = $this->goutteClient->request('GET', sprintf('https://weather.com/pt-BR/clima/hoje/l/%s', $this->getCityId()));
@@ -70,6 +69,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
             }
 
             $data = json_decode(json_encode($json), true);
+            $this->setData($data);
         }
 
         $response->write($this->arrayToXml($data)->asXML());

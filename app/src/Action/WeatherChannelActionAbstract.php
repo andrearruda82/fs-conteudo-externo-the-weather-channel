@@ -153,7 +153,7 @@ abstract class WeatherChannelActionAbstract
             'forecasts' => []
         ];
 
-        for($i = 0; $i <= 3; $i++) {
+        for($i = 0; $i <= 4; $i++) {
             $data['forecasts'][$i] = [
                 'weekday' => '',
                 'phrases' => [

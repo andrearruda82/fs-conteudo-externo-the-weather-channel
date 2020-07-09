@@ -57,7 +57,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
             $json->forecasts[0]->phrases->pop = $this->getForecastNowPhrases();
             $json->forecasts[0]->phrases->narrative = $json->forecasts[0]->phrases->pop;
 
-            for($i = 1; $i < 4; $i++) {
+            for($i = 1; $i <= 4; $i++) {
                 $json->forecasts[$i]->weekday = $this->getForecastWeekday($i);
                 $json->forecasts[$i]->phrases->pop = $this->getForecastPhrases($i);
                 $json->forecasts[$i]->phrases->narrative = $json->forecasts[$i]->phrases->pop;

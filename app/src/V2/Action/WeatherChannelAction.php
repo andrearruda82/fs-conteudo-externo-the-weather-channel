@@ -148,11 +148,13 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
     }
 
     private function getForecastWeekday(int $position) : string {
+
         return $this->crawlerTenDay
             ->filter('body main section.card div')->eq(1)
             ->filter('details')->eq($position)
             ->filter('summary > div > div > h2')
-            ->text();
+            ->text()
+        ;
     }
 
     private function getForecastPhrases(int $position) : string {

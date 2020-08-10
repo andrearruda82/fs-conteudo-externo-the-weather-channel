@@ -151,7 +151,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
         return $this->crawlerTenDay
             ->filter('body main section.card div')->eq(1)
             ->filter('details')->eq($position)
-            ->filter('summary > div > div > h3')
+            ->filter('summary > div > div > div[data-testid=wxIcon] > span')
             ->text();
     }
 

@@ -80,8 +80,8 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
     private function getDatePublished() : \DateTime {
         $timestampStr = $this->crawlerNow
             ->filter('body main > div')->eq(1)
-            ->filter('div.region-main > div')->eq(0)
-            ->filter('section > div > div > div')
+            ->filter('main.region-main > div > div > section')->eq(0)
+            ->filter('div > div > div')
             ->text()
         ;
 
@@ -95,7 +95,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
         if(is_null($this->getCityName())) {
             $cityName = $this->crawlerTenDay
                 ->filter('body main > div')->eq(1)
-                ->filter('div.region-main > div')->eq(0)
+                ->filter('main.region-main > div')->eq(0)
                 ->filter('section.card > h1 > span > span')
                 ->text()
             ;
@@ -109,7 +109,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
     private function getNowTemp() : int {
         return (int) $this->crawlerNow
             ->filter('body main > div')->eq(1)
-            ->filter('div.region-main > div')->eq(0)
+            ->filter('main.region-main > div')->eq(0)
             ->filter('section > div > div')->eq(1)
             ->filter('div span[data-testid=TemperatureValue]')
             ->text();
@@ -124,7 +124,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
 
         return (int) $this->crawlerNow
             ->filter('body main > div')->eq(1)
-            ->filter('div.region-main > div')->eq(0)
+            ->filter('main.region-main > div')->eq(0)
             ->filter('section > div > div')->eq(1)
             ->filter('span')->eq($types[$type])
             ->text();
@@ -141,7 +141,7 @@ class WeatherChannelAction extends WeatherChannelActionAbstract
     private function getNowMidiaId() : int {
         return (int) $this->crawlerNow
             ->filter('body main > div')->eq(1)
-            ->filter('div.region-main > div')->eq(0)
+            ->filter('main.region-main > div')->eq(0)
             ->filter('section > div > div')->eq(1)
             ->filter('svg')
             ->attr('skycode');
